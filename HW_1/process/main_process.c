@@ -21,8 +21,8 @@
 enum program_mode
 {
   PROGRAM_MODE_CLOCK = 0, /* must be started with 0 */
-  /*
   PROGRAM_MODE_COUNTER,
+  /*
   PROGRAM_MODE_TEXT_EDITOR,
   PROGRAM_MODE_DRAW_BOARD,
   PROGRAM_MODE_EXTRA,
@@ -35,6 +35,7 @@ static bool terminated = false;
 
 enum program_mode program_mode = PROGRAM_MODE_CLOCK;
 struct mode_clock_status *mode_clock_status = NULL;
+struct mode_counter_status *mode_counter_status = NULL;
 
 static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd);
 static int process_input_message (const struct input_message_header *msg_header, void *msg_body, int output_pipe_fd);
@@ -114,10 +115,15 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
             mode_clock_destroy (mode_clock_status);
             mode_clock_status = NULL;
           }
-      break;
-      /*
-      case PROGRAM_MODE_COUNTER:
         break;
+      case PROGRAM_MODE_COUNTER:
+        if (mode_counter_status)
+          {
+            mode_counter_destroy (mode_counter_status);
+            mode_counter_status = NULL;
+          }
+        break;
+      /*
       case PROGRAM_MODE_TEXT_EDITOR:
         break;
       case PROGRAM_MODE_DRAW_BOARD:
@@ -133,10 +139,11 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
     {
       case PROGRAM_MODE_CLOCK:
         mode_clock_status = mode_clock_construct (output_pipe_fd);
-      break;
-      /*
-      case PROGRAM_MODE_COUNTER:
         break;
+      case PROGRAM_MODE_COUNTER:
+        mode_counter_status = mode_counter_construct (output_pipe_fd);
+        break;
+      /*
       case PROGRAM_MODE_TEXT_EDITOR:
         break;
       case PROGRAM_MODE_DRAW_BOARD:
@@ -206,9 +213,9 @@ static int input_message_h_switch (switch_data_t data)
     {
       case PROGRAM_MODE_CLOCK:
         return mode_clock_switch (mode_clock_status, data);
-      /*
       case PROGRAM_MODE_COUNTER:
-        break;
+        return mode_counter_switch (mode_counter_status, data);
+      /*
       case PROGRAM_MODE_TEXT_EDITOR:
         break;
       case PROGRAM_MODE_DRAW_BOARD:
