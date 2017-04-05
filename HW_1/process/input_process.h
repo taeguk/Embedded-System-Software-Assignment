@@ -1,0 +1,12 @@
+//
+// Created by taeguk on 2017-04-05.
+//
+
+#ifndef EMBEDDED_SYSTEM_SOFTWARE_ASSIGNMENT_INPUT_PROCESS_H
+#define EMBEDDED_SYSTEM_SOFTWARE_ASSIGNMENT_INPUT_PROCESS_H
+
+#include <unistd.h>
+
+int input_process_main (int pipe_fd);
+
+#endif //EMBEDDED_SYSTEM_SOFTWARE_ASSIGNMENT_INPUT_PROCESS_H
