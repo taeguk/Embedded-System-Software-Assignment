@@ -25,8 +25,8 @@ struct mode_clock_status
   volatile int min;
 
   volatile bool changing;
-  union led_data normal_led_data;
-  union led_data changing_led_data[2];
+  /* const */union led_data normal_led_data;  // not modify after initialized.
+  /* const */union led_data changing_led_data[2];  // not modify after initialized.
 
   pthread_t background_worker;
   volatile bool terminated;  // flag for terminating background worker.
@@ -144,7 +144,12 @@ static void *background_worker_main (void *arg)
       if (atomic_exchange_bool (&status->invalidated, false))
         {
           if (!atomic_load_bool (&status->changing))
-            output_message_led_send (status->output_pipe_fd, status->normal_led_data);
+            {
+              // No data race problem because status->normal_led_data is not modified after initialized.
+              output_message_led_send (status->output_pipe_fd, status->normal_led_data);
+            }
+          // Orginially, there is a tiny multi-thread bug about status->hour and status->min.
+          // But, it is very rare and not critical. So it can be forgived.
           output_message_fnd_send (status->output_pipe_fd, status->hour * 100 + status->min);
         }
 

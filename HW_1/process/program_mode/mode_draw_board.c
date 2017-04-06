@@ -16,7 +16,10 @@
 
 static struct dot_matrix_data empty_dot_data;
 
-// TODO: Thread-Safe
+/*
+ * TODO: Thread-Safe.
+ */
+
 struct mode_draw_board_status
 {
   int output_pipe_fd;
@@ -24,7 +27,7 @@ struct mode_draw_board_status
   volatile bool cur_show;
   int cur_pos_x, cur_pos_y;
   char cur_val;
-  struct dot_matrix_data dot_data;
+  struct dot_matrix_data dot_data;  // Thread-Unsafe. TODO: It must be syncronized.
   
   pthread_t background_worker;
   volatile bool terminated;  // flag for terminating background worker.
@@ -78,7 +81,7 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
 
   if (data.bit_fields.s3)
     {
-      // TODO: problem.
+      // TODO: problem. Need "atomic not".
       atomic_store_bool (&status->cur_show, atomic_load_bool (&status->cur_show));
     }
 
@@ -120,6 +123,7 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
         }
     }
 
+  /* When cursor position is changed. */
   if (0 <= next_x && next_x < DOT_MATRIX_WIDTH &&
       0 <= next_y && next_y < DOT_MATRIX_HEIGHT &&
       (next_x != status->cur_pos_x || next_y != status->cur_pos_y))
