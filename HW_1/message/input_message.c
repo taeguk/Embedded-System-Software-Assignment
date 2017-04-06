@@ -57,7 +57,7 @@ int input_message_vol_down_send (int fd)
   return 0;
 }
 
-int input_message_switch_send (int fd, switch_data_t data)
+int input_message_switch_send (int fd, union switch_data data)
 {
   struct input_message_header msg_header;
   msg_header.type = INPUT_MESSAGE_TYPE_SWITCH;

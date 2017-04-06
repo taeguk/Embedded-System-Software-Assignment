@@ -41,6 +41,8 @@ union led_data
   uint8_t val;
 };
 
+#define MAX_LCD_STRING_LEN 32
+
 struct text_lcd_data
 {
   size_t len;  // the length of string.

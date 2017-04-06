@@ -75,53 +75,49 @@ void mode_clock_destroy (struct mode_clock_status *status)
   free (status);
 }
 
-int mode_clock_switch (struct mode_clock_status *status, int switch_no)
+int mode_clock_switch (struct mode_clock_status *status, union switch_data data)
 {
-  switch (switch_no)
+  if (data.bit_fields.s1)
     {
-      case 1:
+      if (status->changing)
         {
-          if (status->changing)
-            {
-              status->saved_hour = status->hour;
-              status->saved_min = status->min;
-              atomic_store_bool (&status->changing, false);
-              atomic_store_bool (&status->invalidated, true);
-              // led 깜박의 종료.
-            }
-          else
-            {
-              atomic_store_bool (&status->changing, true);
-              // led 깜박의 시작.
-            }
+          status->saved_hour = status->hour;
+          status->saved_min = status->min;
+          atomic_store_bool (&status->changing, false);
+          atomic_store_bool (&status->invalidated, true);
+          // led 깜박의 종료.
         }
-        break;
-      case 2:
+      else
         {
-          status->hour = status->saved_hour;
-          status->min = status->saved_min;
+          atomic_store_bool (&status->changing, true);
+          // led 깜박의 시작.
+        }
+    }
+
+  if (data.bit_fields.s2)
+    {
+      status->hour = status->saved_hour;
+      status->min = status->saved_min;
+      atomic_store_bool (&status->invalidated, true);
+    }
+
+  if (data.bit_fields.s3)
+    {
+      if (status->changing)
+        {
+          status->hour = (status->hour + 1) % 24;
           atomic_store_bool (&status->invalidated, true);
         }
-        break;
-      case 3:
+    }
+
+  if (data.bit_fields.s4)
+    {
+      // 의문: hour를 1증가 안해도 되나?
+      if (status->changing)
         {
-          if (status->changing)
-            {
-              status->hour = (status->hour + 1) % 24;
-              atomic_store_bool (&status->invalidated, true);
-            }
+          status->min = (status->min + 1) % 60;
+          atomic_store_bool (&status->invalidated, true);
         }
-        break;
-      case 4:
-        {
-          // 의문: hour를 1증가 안해도 되나?
-          if (status->changing)
-            {
-              status->min = (status->min + 1) % 60;
-              atomic_store_bool (&status->invalidated, true);
-            }
-        }
-        break;
     }
 
   return 0;

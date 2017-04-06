@@ -77,36 +77,33 @@ void mode_counter_destroy (struct mode_counter_status *status)
   free (status);
 }
 
-int mode_counter_switch (struct mode_counter_status *status, int switch_no)
+int mode_counter_switch (struct mode_counter_status *status, union switch_data data)
 {
   int base = notation_to_base[status->notation];
-  switch (switch_no)
+
+  if (data.bit_fields.s1)
     {
-      case 1:
-        {
-          status->notation = (status->notation + 1) % _NOTATION_COUNT;
-          output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
-          output_message_led_send (status->output_pipe_fd, notation_to_led_data[status->notation]);
-        }
-      break;
-      case 2:
-        {
-          status->number += base * base;
-          output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
-        }
-      break;
-      case 3:
-        {
-          status->number += base;
-          output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
-        }
-      break;
-      case 4:
-        {
-          status->number += 1;
-          output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
-        }
-      break;
+      status->notation = (status->notation + 1) % _NOTATION_COUNT;
+      output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
+      output_message_led_send (status->output_pipe_fd, notation_to_led_data[status->notation]);
+    }
+
+  if (data.bit_fields.s2)
+    {
+      status->number += base * base;
+      output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
+    }
+
+  if (data.bit_fields.s3)
+    {
+      status->number += base;
+      output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
+    }
+
+  if (data.bit_fields.s4)
+    {
+      status->number += 1;
+      output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
     }
 
   return 0;

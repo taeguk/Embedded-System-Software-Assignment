@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <error.h>
 #include <errno.h>
+#include <string.h>
 #include "output_process.h"
 #include "../message/output_message.h"
 #include "../common/logging.h"
@@ -21,9 +22,9 @@ static bool terminated = false;
 
 static int process_message (const struct output_message_header *msg_header, void *msg_body);
 static int message_h_fnd (fnd_data_t data);
-static int message_h_text_lcd (struct text_lcd_data data);
+static int message_h_text_lcd (const struct text_lcd_data *data);
 static int message_h_led (union led_data data);
-static int message_h_dot_matrix (struct dot_matrix_data data);
+static int message_h_dot_matrix (const struct dot_matrix_data *data);
 
 int output_process_main (int pipe_fd)
 {
@@ -102,10 +103,10 @@ static int process_message (const struct output_message_header *msg_header, void
         return message_h_led ( *((union led_data *) msg_body) );
       case OUTPUT_MESSAGE_TYPE_TEXT_LCD:
         LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (TEXT_LCD - %d).", ((struct text_lcd_data *) msg_body)->len);
-        return message_h_text_lcd ( *((struct text_lcd_data *) msg_body) );
+        return message_h_text_lcd ( (struct text_lcd_data *) msg_body);
       case OUTPUT_MESSAGE_TYPE_DOT_MATRIX:
         LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (DOT_MATRIX).");
-        return message_h_dot_matrix ( *((struct dot_matrix_data *) msg_body) );
+        return message_h_dot_matrix ( (struct dot_matrix_data *) msg_body);
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Output Process] strange message type : %d.", msg_header->type);
         return -1;
@@ -130,14 +131,18 @@ static int message_h_fnd (fnd_data_t data)
   return 0;
 }
 
-static int message_h_text_lcd (struct text_lcd_data data)
+static int message_h_text_lcd (const struct text_lcd_data *data)
 {
+  char dev_data[MAX_LCD_STRING_LEN] = { [0 ... MAX_LCD_STRING_LEN-1] = ' ' };
   int fd = open (DEVICE_TEXT_LCD, O_WRONLY);
   if (fd == -1)
     return -1;
 
-  int over_len = data.len > 32 ? data.len - 32 : 0;
-  write (fd, data.str + over_len, sizeof (char) * (data.len - over_len));
+  int over_len = data->len > MAX_LCD_STRING_LEN ? data->len - MAX_LCD_STRING_LEN : 0;
+
+  strncpy (dev_data, data->str + over_len, data->len - over_len);
+
+  write (fd, dev_data, sizeof (dev_data));
   close (fd);
   return 0;
 }
@@ -153,16 +158,17 @@ static int message_h_led (union led_data data)
   return 0;
 }
 
-static int message_h_dot_matrix (struct dot_matrix_data data)
+static int message_h_dot_matrix (const struct dot_matrix_data *data)
 {
   unsigned char dev_data[DOT_MATRIX_HEIGHT] = { 0, };
   for (int i = 0; i < DOT_MATRIX_HEIGHT; ++i)
     {
       for (int j = 0; j < DOT_MATRIX_WIDTH; ++j)
         {
-          if (data.data[i][j] == 1)
-            dev_data[i] |= (1 << (DOT_MATRIX_WIDTH-1-i));
+          if (data->data[i][j] == 1)
+            dev_data[i] |= (1 << (DOT_MATRIX_WIDTH-1-j));
         }
+      LOG (LOGGING_LEVEL_DEBUG, "[Output Process] %d - %02X", i, dev_data[i]);
     }
 
   int fd = open (DEVICE_DOT_MATRIX, O_WRONLY);

@@ -16,8 +16,7 @@
 
 #define DEVICE_READKEY  "/dev/input/event0"
 #define DEVICE_SWITCH "/dev/fpga_push_switch"
-#define DELAY (10*1000)  // background worker delay (microseconds)
-#define BUTTON_NUM 9
+#define POLLING_DELAY (200*1000)  // polling delay (microseconds)
 
 #define KEY_PRESS   1
 #define KEY_RELEASE 0
@@ -78,17 +77,39 @@ static int process_readkey (int readkey_fd, int pipe_fd)
 
 static int process_switch (int switch_fd, int pipe_fd)
 {
-  static unsigned char prev_push[BUTTON_NUM] = { 0, };
-  unsigned char cur_push[BUTTON_NUM];
-  read (switch_fd, cur_push, sizeof (cur_push));
-  for (int i = 0; i < BUTTON_NUM; ++i)
+  static unsigned char prev_push[SWITCH_BUTTON_NUM + 1] = { 0, };
+  unsigned char cur_push[SWITCH_BUTTON_NUM + 1];
+  bool pushed = false;
+
+  read (switch_fd, cur_push + 1, SWITCH_BUTTON_NUM * sizeof (unsigned char));
+
+#define CHECK_AND_SET(no) \
+  if (cur_push[no] == 1 && prev_push[no] != 1) \
+    { \
+      data.bit_fields.s##no = 1; \
+      pushed = true; \
+    } \
+  prev_push[no] = cur_push[no];
+
+  union switch_data data;
+  data.val = 0;
+
+  CHECK_AND_SET(1);
+  CHECK_AND_SET(2);
+  CHECK_AND_SET(3);
+  CHECK_AND_SET(4);
+  CHECK_AND_SET(5);
+  CHECK_AND_SET(6);
+  CHECK_AND_SET(7);
+  CHECK_AND_SET(8);
+  CHECK_AND_SET(9);
+
+#undef CHECK_AND_SET
+
+  if (pushed)
     {
-      if (cur_push[i] == 1 && prev_push[i] != 1)
-        {
-          LOG (LOGGING_LEVEL_NORMAL, "[Input Process] Event occurs. (Switch Push - no : %d).", i + 1);
-          input_message_switch_send (pipe_fd, i + 1);
-        }
-      prev_push[i] = cur_push[i];
+      LOG (LOGGING_LEVEL_NORMAL, "[Input Process] Event occurs. (Switch Push - no : %03X).", data.val);
+      input_message_switch_send(pipe_fd, data);
     }
 
   return 0;
@@ -108,6 +129,7 @@ int input_process_main (int pipe_fd)
     {
       process_readkey (readkey_fd, pipe_fd);
       process_switch (switch_fd, pipe_fd);
+      usleep (POLLING_DELAY);
     }
 
   close (readkey_fd);

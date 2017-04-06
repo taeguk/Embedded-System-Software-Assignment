@@ -22,8 +22,8 @@ enum program_mode
 {
   PROGRAM_MODE_CLOCK = 0, /* must be started with 0 */
   PROGRAM_MODE_COUNTER,
-  /*
   PROGRAM_MODE_TEXT_EDITOR,
+  /*
   PROGRAM_MODE_DRAW_BOARD,
   PROGRAM_MODE_EXTRA,
   */
@@ -36,6 +36,7 @@ static bool terminated = false;
 enum program_mode program_mode = PROGRAM_MODE_CLOCK;
 struct mode_clock_status *mode_clock_status = NULL;
 struct mode_counter_status *mode_counter_status = NULL;
+struct mode_text_editor_status *mode_text_editor_status = NULL;
 
 static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd);
 static int process_input_message (const struct input_message_header *msg_header, void *msg_body, int output_pipe_fd);
@@ -43,7 +44,7 @@ static int input_message_h_back ();
 static int input_message_h_prog ();
 static int input_message_h_vol_up (int output_pipe_fd);
 static int input_message_h_vol_down (int output_pipe_fd);
-static int input_message_h_switch (switch_data_t data);
+static int input_message_h_switch (union switch_data data);
 
 int main_process_main (int input_pipe_fd, int output_pipe_fd)
 {
@@ -135,9 +136,14 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
             mode_counter_status = NULL;
           }
         break;
-      /*
       case PROGRAM_MODE_TEXT_EDITOR:
+        if (mode_text_editor_status)
+          {
+            mode_text_editor_destroy (mode_text_editor_status);
+            mode_text_editor_status = NULL;
+          }
         break;
+      /*
       case PROGRAM_MODE_DRAW_BOARD:
         break;
       case PROGRAM_MODE_EXTRA:
@@ -155,9 +161,10 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
       case PROGRAM_MODE_COUNTER:
         mode_counter_status = mode_counter_construct (output_pipe_fd);
         break;
-      /*
       case PROGRAM_MODE_TEXT_EDITOR:
+        mode_text_editor_status = mode_text_editor_construct (output_pipe_fd);
         break;
+      /*
       case PROGRAM_MODE_DRAW_BOARD:
         break;
       case PROGRAM_MODE_EXTRA:
@@ -191,8 +198,8 @@ static int process_input_message (const struct input_message_header *msg_header,
         LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Read Key - VOL_DOWN).");
         return input_message_h_vol_down (output_pipe_fd);
       case INPUT_MESSAGE_TYPE_SWITCH:
-        LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Switch - no : %d).", *((switch_data_t*) msg_body));
-        return input_message_h_switch (*((switch_data_t*) msg_body));
+        LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Switch - val : %03X).", ((union switch_data *) msg_body)->val);
+        return input_message_h_switch (*((union switch_data *) msg_body));
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Main Process] strange input message type : %d.", msg_header->type);
         return -1;
@@ -224,7 +231,7 @@ static int input_message_h_vol_down (int output_pipe_fd)
   return 0;
 }
 
-static int input_message_h_switch (switch_data_t data)
+static int input_message_h_switch (union switch_data data)
 {
   switch (program_mode)
     {
@@ -232,9 +239,9 @@ static int input_message_h_switch (switch_data_t data)
         return mode_clock_switch (mode_clock_status, data);
       case PROGRAM_MODE_COUNTER:
         return mode_counter_switch (mode_counter_status, data);
-      /*
       case PROGRAM_MODE_TEXT_EDITOR:
-        break;
+        return mode_text_editor_switch (mode_text_editor_status, data);
+      /*
       case PROGRAM_MODE_DRAW_BOARD:
         break;
       case PROGRAM_MODE_EXTRA:
