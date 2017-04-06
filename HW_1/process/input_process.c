@@ -16,7 +16,7 @@
 
 #define DEVICE_READKEY  "/dev/input/event0"
 #define DEVICE_SWITCH "/dev/fpga_push_switch"
-#define POLLING_DELAY (200*1000)  // polling delay (microseconds)
+#define POLLING_DELAY (100*1000)  // polling delay (microseconds)
 
 #define KEY_PRESS   1
 #define KEY_RELEASE 0

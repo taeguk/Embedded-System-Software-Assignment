@@ -23,8 +23,8 @@ enum program_mode
   PROGRAM_MODE_CLOCK = 0, /* must be started with 0 */
   PROGRAM_MODE_COUNTER,
   PROGRAM_MODE_TEXT_EDITOR,
-  /*
   PROGRAM_MODE_DRAW_BOARD,
+  /*
   PROGRAM_MODE_EXTRA,
   */
 
@@ -37,6 +37,7 @@ enum program_mode program_mode = PROGRAM_MODE_CLOCK;
 struct mode_clock_status *mode_clock_status = NULL;
 struct mode_counter_status *mode_counter_status = NULL;
 struct mode_text_editor_status *mode_text_editor_status = NULL;
+struct mode_draw_board_status *mode_draw_board_status = NULL;
 
 static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd);
 static int process_input_message (const struct input_message_header *msg_header, void *msg_body, int output_pipe_fd);
@@ -143,9 +144,14 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
             mode_text_editor_status = NULL;
           }
         break;
-      /*
       case PROGRAM_MODE_DRAW_BOARD:
+        if (mode_draw_board_status)
+          {
+            mode_draw_board_destroy (mode_draw_board_status);
+            mode_draw_board_status = NULL;
+          }
         break;
+      /*
       case PROGRAM_MODE_EXTRA:
         break;
       */
@@ -164,9 +170,10 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
       case PROGRAM_MODE_TEXT_EDITOR:
         mode_text_editor_status = mode_text_editor_construct (output_pipe_fd);
         break;
-      /*
       case PROGRAM_MODE_DRAW_BOARD:
+        mode_draw_board_status = mode_draw_board_construct (output_pipe_fd);
         break;
+      /*
       case PROGRAM_MODE_EXTRA:
         break;
       */
@@ -241,9 +248,9 @@ static int input_message_h_switch (union switch_data data)
         return mode_counter_switch (mode_counter_status, data);
       case PROGRAM_MODE_TEXT_EDITOR:
         return mode_text_editor_switch (mode_text_editor_status, data);
-      /*
       case PROGRAM_MODE_DRAW_BOARD:
-        break;
+        return mode_draw_board_switch (mode_draw_board_status, data);
+      /*
       case PROGRAM_MODE_EXTRA:
         break;
       */

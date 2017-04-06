@@ -21,8 +21,8 @@ struct mode_clock_status
   int output_pipe_fd;
   int saved_hour;
   int saved_min;
-  int hour;
-  int min;
+  volatile int hour;
+  volatile int min;
 
   volatile bool changing;
   union led_data normal_led_data;
