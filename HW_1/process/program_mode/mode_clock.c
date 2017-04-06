@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "../../message/output_message.h"
+#include "../../common/logging.h"
 #include "mode_clock.h"
 #include "../../common/atomic.h"
 #include "../../common/mytime.h"
@@ -130,13 +131,15 @@ static void *background_worker_main (void *arg)
 {
   struct mode_clock_status *status = arg;
   int led_idx = 0;
-  long prev_blink_time = get_nano_realtime () - 2 * LED_BLINK_DELAY;
+  long long prev_blink_time = get_nano_time () - 2 * LED_BLINK_DELAY;
 
   while (!atomic_load_bool (&status->terminated))
     {
-      long cur_time = get_nano_realtime ();
+      long long cur_time = get_nano_time ();
+
       if (cur_time >= prev_blink_time + LED_BLINK_DELAY && atomic_load_bool (&status->changing))
         {
+          LOG (LOGGING_LEVEL_DEBUG, "[Main Process - Background Worker] blink!");
           output_message_led_send (status->output_pipe_fd, status->changing_led_data[led_idx]);
           led_idx = (led_idx + 1) % 2;
           prev_blink_time = cur_time;

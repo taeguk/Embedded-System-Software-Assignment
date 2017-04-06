@@ -29,14 +29,14 @@ typedef uint16_t fnd_data_t;
 union led_data
 {
   struct {
-    uint8_t e1 : 1;
-    uint8_t e2 : 1;
-    uint8_t e3 : 1;
-    uint8_t e4 : 1;
-    uint8_t e5 : 1;
-    uint8_t e6 : 1;
-    uint8_t e7 : 1;
     uint8_t e8 : 1;
+    uint8_t e7 : 1;
+    uint8_t e6 : 1;
+    uint8_t e5 : 1;
+    uint8_t e4 : 1;
+    uint8_t e3 : 1;
+    uint8_t e2 : 1;
+    uint8_t e1 : 1;
   } bit_fields;
   uint8_t val;
 };
@@ -47,8 +47,8 @@ struct text_lcd_data
   char str[0];
 };
 
-#define DOT_MATRIX_WIDTH 11
-#define DOT_MATRIX_HEIGHT 11
+#define DOT_MATRIX_WIDTH 7
+#define DOT_MATRIX_HEIGHT 10
 
 struct dot_matrix_data
 {

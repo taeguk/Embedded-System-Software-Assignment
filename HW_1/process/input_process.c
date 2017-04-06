@@ -14,7 +14,7 @@
 #include "../common/logging.h"
 #include "../message/input_message.h"
 
-#define DEVICE_READKEY  "/def/input/event0"
+#define DEVICE_READKEY  "/dev/input/event0"
 #define DEVICE_SWITCH "/dev/fpga_push_switch"
 #define DELAY (10*1000)  // background worker delay (microseconds)
 #define BUTTON_NUM 9
@@ -54,43 +54,41 @@ static int process_readkey (int readkey_fd, int pipe_fd)
       switch (ev.code)
         {
           case KEY_CODE_BACK:
+            LOG (LOGGING_LEVEL_NORMAL, "[Input Process] Event occurs. (Read Key - Back).");
             input_message_back_send (pipe_fd);
             terminated = true;
           break;
           case KEY_CODE_VOL_UP:
+            LOG (LOGGING_LEVEL_NORMAL, "[Input Process] Event occurs. (Read Key - VOL_UP).");
             input_message_vol_up_send (pipe_fd);
           break;
           case KEY_CODE_VOL_DOWN:
+            LOG (LOGGING_LEVEL_NORMAL, "[Input Process] Event occurs. (Read Key - VOL_DOWN).");
             input_message_vol_down_send (pipe_fd);
           break;
           default:
-            ;/* skip when other codes */
+            if (ev.code != 0)
+              LOG (LOGGING_LEVEL_NORMAL, "[Input Process] Event occurs. (Read Key - OTHERS, code : %d).", ev.code);
+            /* skip when other codes */
         }
     }
 
   return 0;
 }
 
-static int process_switch (int switch_fd, int pipe_fd, bool first)
+static int process_switch (int switch_fd, int pipe_fd)
 {
-  static unsigned char prev_push[BUTTON_NUM];
-
-  if (first)
+  static unsigned char prev_push[BUTTON_NUM] = { 0, };
+  unsigned char cur_push[BUTTON_NUM];
+  read (switch_fd, cur_push, sizeof (cur_push));
+  for (int i = 0; i < BUTTON_NUM; ++i)
     {
-      read (switch_fd, prev_push, sizeof (prev_push));
-    }
-  else
-    {
-      unsigned char cur_push[BUTTON_NUM];
-      read (switch_fd, cur_push, sizeof (cur_push));
-      for (int i = 0; i < BUTTON_NUM; ++i)
+      if (cur_push[i] == 1 && prev_push[i] != 1)
         {
-          if (prev_push[i] != cur_push[i])
-            {
-              input_message_switch_send (pipe_fd, i + 1);
-              prev_push[i] = cur_push[i];
-            }
+          LOG (LOGGING_LEVEL_NORMAL, "[Input Process] Event occurs. (Switch Push - no : %d).", i + 1);
+          input_message_switch_send (pipe_fd, i + 1);
         }
+      prev_push[i] = cur_push[i];
     }
 
   return 0;
@@ -106,12 +104,17 @@ int input_process_main (int pipe_fd)
   if ((switch_fd = open (DEVICE_SWITCH, O_RDWR)) == -1)
     perror ("[Input Process] open switch device error : ");
 
-  process_switch (switch_fd, pipe_fd, true);
   while (!terminated)
     {
       process_readkey (readkey_fd, pipe_fd);
-      process_switch (switch_fd, pipe_fd, false);
+      process_switch (switch_fd, pipe_fd);
     }
+
+  close (readkey_fd);
+  close (switch_fd);
+  close (pipe_fd);
+  
+  LOG (LOGGING_LEVEL_NORMAL, "[Input Process] I'm gracefully dead.");
 
   return 0;
 }

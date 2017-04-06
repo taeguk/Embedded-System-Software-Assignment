@@ -41,7 +41,7 @@ int main ()
     {
       // I'm input process
       close (input_pipe_fd[0]);
-      input_process_main (input_pipe_fd[0]);
+      input_process_main (input_pipe_fd[1]);
     }
 
   return 0;

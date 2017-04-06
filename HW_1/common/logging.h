@@ -13,8 +13,8 @@
 #define LOGGING_LEVEL_NORMAL 3
 #define LOGGING_LEVEL_HIGH 5
 
-#define LOG_STDOUT(level_, ...) if ((level_) >= _LOGGING_LEVEL) { fprintf (stdout, __VA_ARGS__); fprintf (stdout, "\n"); }
-#define LOG_STDERR(level_, ...) if ((level_) >= _LOGGING_LEVEL) { fprintf (stderr, __VA_ARGS__); fprintf (stderr, "\n"); }
+#define LOG_STDOUT(level_, ...) if ((level_) >= _LOGGING_LEVEL) { fprintf (stdout, __VA_ARGS__); fprintf (stdout, "\n"); fflush (stdout); }
+#define LOG_STDERR(level_, ...) if ((level_) >= _LOGGING_LEVEL) { fprintf (stderr, __VA_ARGS__); fprintf (stderr, "\n"); fflush (stderr); }
 
 #define LOG(...) LOG_STDERR(__VA_ARGS__)
 

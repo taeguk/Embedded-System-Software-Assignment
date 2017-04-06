@@ -5,9 +5,9 @@
 #include <time.h>
 #include "mytime.h"
 
-long get_nano_realtime ()
+long long get_nano_time ()
 {
   struct timespec tspec;
-  clock_gettime (CLOCK_REALTIME, &tspec);
-  return tspec.tv_nsec;
+  clock_gettime (CLOCK_MONOTONIC, &tspec);
+  return tspec.tv_sec * 1000LL * 1000LL * 1000LL + tspec.tv_nsec;
 }

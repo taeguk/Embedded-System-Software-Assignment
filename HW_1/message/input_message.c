@@ -40,7 +40,7 @@ int input_message_vol_up_send (int fd)
   // Send header.
   write (fd, &msg_header, sizeof (msg_header));
   // No body.
-
+  
   return 0;
 }
 

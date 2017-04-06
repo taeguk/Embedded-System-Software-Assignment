@@ -56,7 +56,7 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
     {
       int read_sz;
       struct input_message_header msg_header;
-
+      
       read_sz = read (input_pipe_fd, &msg_header, sizeof (msg_header));
       if (read_sz == -1)
         {
@@ -80,6 +80,8 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
           return -1;
         }
 
+      LOG (LOGGING_LEVEL_DEBUG, "[Main Process] After reading message header.");
+      
       void *msg_body= malloc (msg_header.body_size);
       read_sz = 0;
       while (read_sz < msg_header.body_size)
@@ -95,11 +97,20 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
             }
           read_sz += tmp_read_sz;
         }
+      
+      LOG (LOGGING_LEVEL_DEBUG, "[Main Process] After reading message body.");
 
       process_input_message (&msg_header, msg_body, output_pipe_fd);
+      
+      LOG (LOGGING_LEVEL_DEBUG, "[Main Process] After processing message.");
 
       free (msg_body);
     }
+
+  close (input_pipe_fd);
+  close (output_pipe_fd);
+  
+  LOG (LOGGING_LEVEL_NORMAL, "[Main Process] I'm gracefully dead.");
 
   return 0;
 }
@@ -107,6 +118,7 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
 
 static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd)
 {
+  LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Change mode (%d -> %d).", program_mode, new_mode);
   switch (program_mode)
     {
       case PROGRAM_MODE_CLOCK:
@@ -167,14 +179,19 @@ static int process_input_message (const struct input_message_header *msg_header,
   switch (msg_header->type)
     {
       case INPUT_MESSAGE_TYPE_BACK:
+        LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Read Key - Back).");
         return input_message_h_back ();
       case INPUT_MESSAGE_TYPE_PROG:
+        LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Read Key - PROG).");
         return input_message_h_prog ();
       case INPUT_MESSAGE_TYPE_VOL_UP:
+        LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Read Key - VOL_UP).");
         return input_message_h_vol_up (output_pipe_fd);
       case INPUT_MESSAGE_TYPE_VOL_DOWN:
+        LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Read Key - VOL_DOWN).");
         return input_message_h_vol_down (output_pipe_fd);
       case INPUT_MESSAGE_TYPE_SWITCH:
+        LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Switch - no : %d).", *((switch_data_t*) msg_body));
         return input_message_h_switch (*((switch_data_t*) msg_body));
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Main Process] strange input message type : %d.", msg_header->type);

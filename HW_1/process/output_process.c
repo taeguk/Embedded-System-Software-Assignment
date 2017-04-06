@@ -12,6 +12,11 @@
 #include "../message/output_message.h"
 #include "../common/logging.h"
 
+#define DEVICE_FND "/dev/fpga_fnd"
+#define DEVICE_TEXT_LCD "/dev/fpga_text_lcd"
+#define DEVICE_LED "/dev/fpga_led"
+#define DEVICE_DOT_MATRIX "/dev/fpga_dot"
+
 static bool terminated = false;
 
 static int process_message (const struct output_message_header *msg_header, void *msg_body);
@@ -69,10 +74,18 @@ int output_process_main (int pipe_fd)
           read_sz += tmp_read_sz;
         }
 
-      process_message (&msg_header, msg_body);
+      if (process_message (&msg_header, msg_body) == -1)
+        {
+          LOG (LOGGING_LEVEL_HIGH, 
+               "[Output Process] Process message error (msg type = %d).", msg_header.type);
+        }
 
       free (msg_body);
     }
+  
+  close (pipe_fd);
+
+  LOG (LOGGING_LEVEL_NORMAL, "[Output Process] I'm gracefully dead.");
 
   return 0;
 }
@@ -82,12 +95,16 @@ static int process_message (const struct output_message_header *msg_header, void
   switch (msg_header->type)
     {
       case OUTPUT_MESSAGE_TYPE_FND:
+        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (FND - %d).", *((fnd_data_t *) msg_body));
         return message_h_fnd ( *((fnd_data_t *) msg_body) );
       case OUTPUT_MESSAGE_TYPE_LED:
+        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (LED - %d).", ((union led_data *) msg_body)->val);
         return message_h_led ( *((union led_data *) msg_body) );
       case OUTPUT_MESSAGE_TYPE_TEXT_LCD:
+        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (TEXT_LCD - %d).", ((struct text_lcd_data *) msg_body)->len);
         return message_h_text_lcd ( *((struct text_lcd_data *) msg_body) );
       case OUTPUT_MESSAGE_TYPE_DOT_MATRIX:
+        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (DOT_MATRIX).");
         return message_h_dot_matrix ( *((struct dot_matrix_data *) msg_body) );
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Output Process] strange message type : %d.", msg_header->type);
@@ -97,28 +114,62 @@ static int process_message (const struct output_message_header *msg_header, void
 
 static int message_h_fnd (fnd_data_t data)
 {
-  // TODO:
-  (void) data;
+  unsigned char dev_data[4] = { 0, };
+  for (int i = 3; i >= 0; --i)
+    {
+      dev_data[i] = data % 10;
+      data /= 10;
+    }
+
+  int fd = open (DEVICE_FND, O_WRONLY);
+  if (fd == -1)
+    return -1;
+
+  write (fd, dev_data, sizeof (dev_data));
+  close (fd);
   return 0;
 }
 
 static int message_h_text_lcd (struct text_lcd_data data)
 {
-  // TODO:
-  (void) data;
+  int fd = open (DEVICE_TEXT_LCD, O_WRONLY);
+  if (fd == -1)
+    return -1;
+
+  int over_len = data.len > 32 ? data.len - 32 : 0;
+  write (fd, data.str + over_len, sizeof (char) * (data.len - over_len));
+  close (fd);
   return 0;
 }
 
 static int message_h_led (union led_data data)
 {
-  // TODO:
-  (void) data;
+  int fd = open (DEVICE_LED, O_WRONLY);
+  if (fd == -1)
+    return -1;
+
+  write (fd, &data.val, sizeof (data.val));
+  close (fd);
   return 0;
 }
 
 static int message_h_dot_matrix (struct dot_matrix_data data)
 {
-  // TODO:
-  (void) data;
+  unsigned char dev_data[DOT_MATRIX_HEIGHT] = { 0, };
+  for (int i = 0; i < DOT_MATRIX_HEIGHT; ++i)
+    {
+      for (int j = 0; j < DOT_MATRIX_WIDTH; ++j)
+        {
+          if (data.data[i][j] == 1)
+            dev_data[i] |= (1 << (DOT_MATRIX_WIDTH-1-i));
+        }
+    }
+
+  int fd = open (DEVICE_DOT_MATRIX, O_WRONLY);
+  if (fd == -1)
+    return -1;
+
+  write (fd, dev_data, sizeof (dev_data));
+  close (fd);
   return 0;
 }

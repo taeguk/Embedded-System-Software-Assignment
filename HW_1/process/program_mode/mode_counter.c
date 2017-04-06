@@ -54,7 +54,7 @@ struct mode_counter_status *mode_counter_construct (int output_pipe_fd)
   {
     status->output_pipe_fd = output_pipe_fd;
     status->number = 0;
-    status->notation = 10;
+    status->notation = NOTATION_DECIMAL;
 
     notation_to_led_data[NOTATION_BINARY].val = 0;
     notation_to_led_data[NOTATION_BINARY].bit_fields.e1 = 1;
@@ -79,6 +79,7 @@ void mode_counter_destroy (struct mode_counter_status *status)
 
 int mode_counter_switch (struct mode_counter_status *status, int switch_no)
 {
+  int base = notation_to_base[status->notation];
   switch (switch_no)
     {
       case 1:
@@ -90,19 +91,19 @@ int mode_counter_switch (struct mode_counter_status *status, int switch_no)
       break;
       case 2:
         {
-          status->number += 100 * notation_to_base[status->notation];
+          status->number += base * base;
           output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
         }
       break;
       case 3:
         {
-          status->number += 10 * notation_to_base[status->notation];
+          status->number += base;
           output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
         }
       break;
       case 4:
         {
-          status->number += notation_to_base[status->notation];
+          status->number += 1;
           output_message_fnd_send (status->output_pipe_fd, make_fnd_data (status->number, status->notation));
         }
       break;
