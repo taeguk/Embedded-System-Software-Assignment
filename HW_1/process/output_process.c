@@ -96,16 +96,16 @@ static int process_message (const struct output_message_header *msg_header, void
   switch (msg_header->type)
     {
       case OUTPUT_MESSAGE_TYPE_FND:
-        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (FND - %d).", *((fnd_data_t *) msg_body));
+        LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (FND - %d).", *((fnd_data_t *) msg_body));
         return message_h_fnd ( *((fnd_data_t *) msg_body) );
       case OUTPUT_MESSAGE_TYPE_LED:
-        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (LED - %d).", ((union led_data *) msg_body)->val);
+        LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (LED - %d).", ((union led_data *) msg_body)->val);
         return message_h_led ( *((union led_data *) msg_body) );
       case OUTPUT_MESSAGE_TYPE_TEXT_LCD:
-        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (TEXT_LCD - %d).", ((struct text_lcd_data *) msg_body)->len);
+        LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (TEXT_LCD - %d).", ((struct text_lcd_data *) msg_body)->len);
         return message_h_text_lcd ( (struct text_lcd_data *) msg_body);
       case OUTPUT_MESSAGE_TYPE_DOT_MATRIX:
-        LOG (LOGGING_LEVEL_NORMAL, "[Output Process] Recv output_message (DOT_MATRIX).");
+        LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (DOT_MATRIX).");
         return message_h_dot_matrix ( (struct dot_matrix_data *) msg_body);
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Output Process] strange message type : %d.", msg_header->type);

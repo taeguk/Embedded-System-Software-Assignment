@@ -24,9 +24,7 @@ enum program_mode
   PROGRAM_MODE_COUNTER,
   PROGRAM_MODE_TEXT_EDITOR,
   PROGRAM_MODE_DRAW_BOARD,
-  /*
   PROGRAM_MODE_EXTRA,
-  */
 
   _PROGRAM_MODE_COUNT  /* The number of program modes */
 };
@@ -38,6 +36,7 @@ struct mode_clock_status *mode_clock_status = NULL;
 struct mode_counter_status *mode_counter_status = NULL;
 struct mode_text_editor_status *mode_text_editor_status = NULL;
 struct mode_draw_board_status *mode_draw_board_status = NULL;
+struct mode_extra_status *mode_extra_status = NULL;
 
 static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd);
 static int process_input_message (const struct input_message_header *msg_header, void *msg_body, int output_pipe_fd);
@@ -151,10 +150,13 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
             mode_draw_board_status = NULL;
           }
         break;
-      /*
       case PROGRAM_MODE_EXTRA:
+        if (mode_extra_status)
+          {
+            mode_extra_destroy (mode_extra_status);
+            mode_extra_status = NULL;
+          }
         break;
-      */
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Main Process] strange program mode : %d.", program_mode);
     }
@@ -173,10 +175,9 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
       case PROGRAM_MODE_DRAW_BOARD:
         mode_draw_board_status = mode_draw_board_construct (output_pipe_fd);
         break;
-      /*
       case PROGRAM_MODE_EXTRA:
+        mode_extra_status = mode_extra_construct (output_pipe_fd);
         break;
-      */
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Main Process] strange program mode : %d.", program_mode);
       exit (-1);
@@ -250,10 +251,8 @@ static int input_message_h_switch (union switch_data data)
         return mode_text_editor_switch (mode_text_editor_status, data);
       case PROGRAM_MODE_DRAW_BOARD:
         return mode_draw_board_switch (mode_draw_board_status, data);
-      /*
       case PROGRAM_MODE_EXTRA:
-        break;
-      */
+        return mode_extra_switch (mode_extra_status, data);
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Main Process] strange program mode : %d.", program_mode);
         return -1;

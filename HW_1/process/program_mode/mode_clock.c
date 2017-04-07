@@ -9,9 +9,9 @@
 #include <pthread.h>
 #include "../../message/output_message.h"
 #include "../../common/logging.h"
-#include "mode_clock.h"
 #include "../../common/atomic.h"
 #include "../../common/mytime.h"
+#include "mode_clock.h"
 
 #define BACKGROUND_WORKER_DELAY (10*1000)  // background worker delay (microseconds)
 #define LED_BLINK_DELAY (1000*1000*1000)  // nanoseconds.
