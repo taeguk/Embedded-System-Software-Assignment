@@ -111,6 +111,18 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
 static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd)
 {
   LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Change mode (%d -> %d).", program_mode, new_mode);
+
+  /* Clear modules */
+  static const fnd_data_t empty_fnd_data = 0;
+  static const union led_data empty_led_data = { .val = 0 }; 
+  static const struct text_lcd_data empty_lcd_data = { .len = 0 };
+  static const struct dot_matrix_data empty_dot_data = { { { 0, }, } };
+  output_message_fnd_send (output_pipe_fd, empty_fnd_data);
+  output_message_led_send (output_pipe_fd, empty_led_data);
+  output_message_text_lcd_send (output_pipe_fd, &empty_lcd_data);
+  output_message_dot_matrix_send (output_pipe_fd, &empty_dot_data);
+
+  /* Destroy previous status */
   switch (program_mode)
     {
       case PROGRAM_MODE_CLOCK:
@@ -152,6 +164,7 @@ static enum program_mode change_mode (enum program_mode new_mode, int output_pip
         LOG (LOGGING_LEVEL_HIGH, "[Main Process] strange program mode : %d.", program_mode);
     }
 
+  /* Create new status */
   switch (new_mode)
     {
       case PROGRAM_MODE_CLOCK:
