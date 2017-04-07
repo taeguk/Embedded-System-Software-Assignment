@@ -13,7 +13,9 @@ enum output_message_type
   OUTPUT_MESSAGE_TYPE_FND,
   OUTPUT_MESSAGE_TYPE_TEXT_LCD,
   OUTPUT_MESSAGE_TYPE_LED,
-  OUTPUT_MESSAGE_TYPE_DOT_MATRIX
+  OUTPUT_MESSAGE_TYPE_DOT_MATRIX,
+
+  OUTPUT_MESSAGE_TYPE_TERMINATE
 };
 
 typedef size_t output_message_size_t;
@@ -64,5 +66,6 @@ int output_message_fnd_send (int fd, fnd_data_t data);
 int output_message_led_send (int fd, union led_data data);
 int output_message_text_lcd_send (int fd, const struct text_lcd_data *data);
 int output_message_dot_matrix_send (int fd, const struct dot_matrix_data *data);
+int output_message_terminate_send (int fd);
 
 #endif //EMBEDDED_SYSTEM_SOFTWARE_ASSIGNMENT_OUTPUT_MESSAGE_H

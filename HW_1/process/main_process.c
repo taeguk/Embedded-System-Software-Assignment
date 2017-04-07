@@ -39,13 +39,14 @@ struct mode_text_editor_status *mode_text_editor_status = NULL;
 struct mode_draw_board_status *mode_draw_board_status = NULL;
 struct mode_extra_status *mode_extra_status = NULL;
 
-static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd);
 static int process_input_message (const struct input_message_header *msg_header, void *msg_body, int output_pipe_fd);
-static int input_message_h_back ();
+static int input_message_h_back (int output_pipe_fd);
 static int input_message_h_prog ();
 static int input_message_h_vol_up (int output_pipe_fd);
 static int input_message_h_vol_down (int output_pipe_fd);
 static int input_message_h_switch (union switch_data data);
+static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd);
+static int clean_devices (int output_pipe_fd);
 
 int main_process_main (int input_pipe_fd, int output_pipe_fd)
 {
@@ -107,20 +108,27 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
   return 0;
 }
 
+static int clean_devices (int output_pipe_fd)
+{
+  static const fnd_data_t empty_fnd_data = 0;
+  static const union led_data empty_led_data = { .val = 0 }; 
+  static const struct text_lcd_data empty_lcd_data = { .len = 0 };
+  static const struct dot_matrix_data empty_dot_data = { { { 0, }, } };
+
+  output_message_fnd_send (output_pipe_fd, empty_fnd_data);
+  output_message_led_send (output_pipe_fd, empty_led_data);
+  output_message_text_lcd_send (output_pipe_fd, &empty_lcd_data);
+  output_message_dot_matrix_send (output_pipe_fd, &empty_dot_data);
+
+  return 0;
+}
 
 static enum program_mode change_mode (enum program_mode new_mode, int output_pipe_fd)
 {
   LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Change mode (%d -> %d).", program_mode, new_mode);
 
-  /* Clear modules */
-  static const fnd_data_t empty_fnd_data = 0;
-  static const union led_data empty_led_data = { .val = 0 }; 
-  static const struct text_lcd_data empty_lcd_data = { .len = 0 };
-  static const struct dot_matrix_data empty_dot_data = { { { 0, }, } };
-  output_message_fnd_send (output_pipe_fd, empty_fnd_data);
-  output_message_led_send (output_pipe_fd, empty_led_data);
-  output_message_text_lcd_send (output_pipe_fd, &empty_lcd_data);
-  output_message_dot_matrix_send (output_pipe_fd, &empty_dot_data);
+  /* Clear devices */
+  clean_devices (output_pipe_fd);
 
   /* Destroy previous status */
   switch (program_mode)
@@ -199,7 +207,7 @@ static int process_input_message (const struct input_message_header *msg_header,
     {
       case INPUT_MESSAGE_TYPE_BACK:
         LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Read Key - Back).");
-        return input_message_h_back ();
+        return input_message_h_back (output_pipe_fd);
       case INPUT_MESSAGE_TYPE_PROG:
         LOG (LOGGING_LEVEL_NORMAL, "[Main Process] Recv input_message (Read Key - PROG).");
         return input_message_h_prog ();
@@ -218,10 +226,12 @@ static int process_input_message (const struct input_message_header *msg_header,
     }
 }
 
-static int input_message_h_back ()
+static int input_message_h_back (int output_pipe_fd)
 {
   LOG (LOGGING_LEVEL_HIGH, "[Main Process] Program Terminated.");
   terminated = true;
+  clean_devices (output_pipe_fd);
+  output_message_terminate_send (output_pipe_fd);
   return 0;
 }
 

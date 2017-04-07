@@ -3,7 +3,14 @@
 //
 
 #include <unistd.h>
+#include <stdio.h>
 #include "input_message.h"
+
+// An Usage of it is not good. "return -1" is better software design.
+// But, for now, program is simple and restricted, so it is okay.
+#define WRITE_OR_DIE(...) \
+  if (write (__VA_ARGS__) == -1) \
+    perror ("[Input Process] Fail to write : ");
 
 int input_message_back_send (int fd)
 {
@@ -12,7 +19,7 @@ int input_message_back_send (int fd)
   msg_header.body_size = 0;
 
   // Send header.
-  write (fd, &msg_header, sizeof (msg_header));
+  WRITE_OR_DIE (fd, &msg_header, sizeof (msg_header));
   // No body.
 
   return 0;
@@ -25,7 +32,7 @@ int input_message_prog_send (int fd)
   msg_header.body_size = 0;
 
   // Send header.
-  write (fd, &msg_header, sizeof (msg_header));
+  WRITE_OR_DIE (fd, &msg_header, sizeof (msg_header));
   // No body.
 
   return 0;
@@ -38,7 +45,7 @@ int input_message_vol_up_send (int fd)
   msg_header.body_size = 0;
 
   // Send header.
-  write (fd, &msg_header, sizeof (msg_header));
+  WRITE_OR_DIE (fd, &msg_header, sizeof (msg_header));
   // No body.
   
   return 0;
@@ -51,7 +58,7 @@ int input_message_vol_down_send (int fd)
   msg_header.body_size = 0;
 
   // Send header.
-  write (fd, &msg_header, sizeof (msg_header));
+  WRITE_OR_DIE (fd, &msg_header, sizeof (msg_header));
   // No body.
 
   return 0;
@@ -64,9 +71,9 @@ int input_message_switch_send (int fd, union switch_data data)
   msg_header.body_size = sizeof (data);
 
   // Send header.
-  write (fd, &msg_header, sizeof (msg_header));
+  WRITE_OR_DIE (fd, &msg_header, sizeof (msg_header));
   // Send body.
-  write (fd, &data, msg_header.body_size);
+  WRITE_OR_DIE (fd, &data, msg_header.body_size);
 
   return 0;
 }

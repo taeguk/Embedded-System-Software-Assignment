@@ -25,6 +25,7 @@ static int message_h_fnd (fnd_data_t data);
 static int message_h_text_lcd (const struct text_lcd_data *data);
 static int message_h_led (union led_data data);
 static int message_h_dot_matrix (const struct dot_matrix_data *data);
+static int message_h_terminate ();
 
 int output_process_main (int pipe_fd)
 {
@@ -90,15 +91,23 @@ static int process_message (const struct output_message_header *msg_header, void
       case OUTPUT_MESSAGE_TYPE_FND:
         LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (FND - %d).", *((fnd_data_t *) msg_body));
         return message_h_fnd ( *((fnd_data_t *) msg_body) );
+
       case OUTPUT_MESSAGE_TYPE_LED:
         LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (LED - %d).", ((union led_data *) msg_body)->val);
         return message_h_led ( *((union led_data *) msg_body) );
+
       case OUTPUT_MESSAGE_TYPE_TEXT_LCD:
-        LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (TEXT_LCD - %d).", ((struct text_lcd_data *) msg_body)->len);
+        LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (TEXT_LCD - %d).", 
+             ((struct text_lcd_data *) msg_body)->len);
         return message_h_text_lcd ( (struct text_lcd_data *) msg_body);
+
       case OUTPUT_MESSAGE_TYPE_DOT_MATRIX:
         LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (DOT_MATRIX).");
         return message_h_dot_matrix ( (struct dot_matrix_data *) msg_body);
+
+      case OUTPUT_MESSAGE_TYPE_TERMINATE:
+        LOG (LOGGING_LEVEL_LOW, "[Output Process] Recv output_message (TERMINATE).");
+        return message_h_terminate ();
       default:
         LOG (LOGGING_LEVEL_HIGH, "[Output Process] strange message type : %d.", msg_header->type);
         return -1;
@@ -170,4 +179,10 @@ static int message_h_dot_matrix (const struct dot_matrix_data *data)
   write (fd, dev_data, sizeof (dev_data));
   close (fd);
   return 0;
+}
+
+static int message_h_terminate ()
+{
+  terminated = true;
+  return true;
 }
