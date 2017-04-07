@@ -57,6 +57,7 @@ struct dot_matrix_data
   char data[DOT_MATRIX_HEIGHT][DOT_MATRIX_WIDTH];  // must be 0 or 1.
 };
 
+/* functions for sending output message */
 int output_message_fnd_send (int fd, fnd_data_t data);
 int output_message_led_send (int fd, union led_data data);
 int output_message_text_lcd_send (int fd, const struct text_lcd_data *data);

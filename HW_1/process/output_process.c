@@ -28,27 +28,17 @@ static int message_h_dot_matrix (const struct dot_matrix_data *data);
 
 int output_process_main (int pipe_fd)
 {
-  if (fcntl (pipe_fd, F_SETFL, fcntl(pipe_fd, F_GETFL) | O_NONBLOCK) == -1)
-    perror ("[Output Process] fcntl error : ");
-
   while (!terminated)
     {
       int read_sz;
       struct output_message_header msg_header;
 
+      /* Read message header */
       read_sz = read (pipe_fd, &msg_header, sizeof (msg_header));
       if (read_sz == -1)
         {
-          if (errno == EAGAIN)
-            {
-              // There is no message in input pipe.
-              continue;
-            }
-          else
-            {
-              // ERROR.
-              perror ("[Output Process] input pipe read error : ");
-            }
+          // ERROR.
+          perror ("[Output Process] input pipe read error : ");
         }
       else if (read_sz != sizeof (msg_header))
         {
@@ -59,6 +49,7 @@ int output_process_main (int pipe_fd)
           return -1;
         }
 
+      /* Read message body */
       void *msg_body= malloc (msg_header.body_size);
       read_sz = 0;
       while (read_sz < msg_header.body_size)
@@ -75,6 +66,7 @@ int output_process_main (int pipe_fd)
           read_sz += tmp_read_sz;
         }
 
+      /* Process message */
       if (process_message (&msg_header, msg_body) == -1)
         {
           LOG (LOGGING_LEVEL_HIGH, 

@@ -112,7 +112,6 @@ int mode_clock_switch (struct mode_clock_status *status, union switch_data data)
 
   if (data.bit_fields.s4)
     {
-      // 의문: hour를 1증가 안해도 되나?
       if (status->changing)
         {
           status->min = (status->min + 1) % 60;

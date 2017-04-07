@@ -31,6 +31,7 @@ enum program_mode
 
 static bool terminated = false;
 
+/* program mode and status variables for each modes */
 enum program_mode program_mode = PROGRAM_MODE_CLOCK;
 struct mode_clock_status *mode_clock_status = NULL;
 struct mode_counter_status *mode_counter_status = NULL;
@@ -48,9 +49,6 @@ static int input_message_h_switch (union switch_data data);
 
 int main_process_main (int input_pipe_fd, int output_pipe_fd)
 {
-  if (fcntl (input_pipe_fd, F_SETFL, fcntl(input_pipe_fd, F_GETFL) | O_NONBLOCK) == -1)
-    perror ("[Main Process] fcntl error : ");
-
   change_mode (PROGRAM_MODE_CLOCK, output_pipe_fd);
 
   while (!terminated)
@@ -58,19 +56,12 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
       int read_sz;
       struct input_message_header msg_header;
       
+      /* Read message header */
       read_sz = read (input_pipe_fd, &msg_header, sizeof (msg_header));
       if (read_sz == -1)
         {
-          if (errno == EAGAIN)
-            {
-              // There is no message in input pipe.
-              continue;
-            }
-          else
-            {
-              // ERROR.
-              perror ("[Main Process] input pipe read error : ");
-            }
+          // ERROR.
+          perror ("[Main Process] input pipe read error : ");
         }
       else if (read_sz != sizeof (msg_header))
         {
@@ -81,8 +72,7 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
           return -1;
         }
 
-      LOG (LOGGING_LEVEL_DEBUG, "[Main Process] After reading message header.");
-      
+      /* Read message body */
       void *msg_body= malloc (msg_header.body_size);
       read_sz = 0;
       while (read_sz < msg_header.body_size)
@@ -99,12 +89,13 @@ int main_process_main (int input_pipe_fd, int output_pipe_fd)
           read_sz += tmp_read_sz;
         }
       
-      LOG (LOGGING_LEVEL_DEBUG, "[Main Process] After reading message body.");
-
-      process_input_message (&msg_header, msg_body, output_pipe_fd);
+      /* Process message */
+      if (process_input_message (&msg_header, msg_body, output_pipe_fd) == -1)
+        {
+          LOG (LOGGING_LEVEL_HIGH, 
+               "[Main Process] Process message error (msg type = %d).", msg_header.type);
+        }
       
-      LOG (LOGGING_LEVEL_DEBUG, "[Main Process] After processing message.");
-
       free (msg_body);
     }
 

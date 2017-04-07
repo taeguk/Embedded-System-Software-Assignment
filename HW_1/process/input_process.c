@@ -27,6 +27,7 @@
 
 bool terminated = false;
 
+/* poll and process readkey device */
 static int process_readkey (int readkey_fd, int pipe_fd)
 {
   int read_sz;
@@ -75,6 +76,7 @@ static int process_readkey (int readkey_fd, int pipe_fd)
   return 0;
 }
 
+/* poll and process switch device */
 static int process_switch (int switch_fd, int pipe_fd)
 {
   static unsigned char prev_push[SWITCH_BUTTON_NUM + 1] = { 0, };

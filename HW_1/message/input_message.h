@@ -43,6 +43,7 @@ union switch_data
   uint16_t val;
 };
 
+/* functions for sending input message */
 int input_message_back_send (int fd);
 int input_message_prog_send (int fd);
 int input_message_vol_up_send (int fd);
