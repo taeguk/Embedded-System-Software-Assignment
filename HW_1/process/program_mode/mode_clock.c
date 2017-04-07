@@ -16,6 +16,13 @@
 #define BACKGROUND_WORKER_DELAY (10*1000)  // background worker delay (microseconds)
 #define LED_BLINK_DELAY (1000*1000*1000)  // nanoseconds.
 
+static const union led_data normal_led_data = { .bit_fields.e1 = 1 };
+static const union led_data changing_led_data[2] = 
+  {
+    { .bit_fields.e3 = 1 },
+    { .bit_fields.e4 = 1 }
+  };
+
 struct mode_clock_status
 {
   int output_pipe_fd;
@@ -24,14 +31,12 @@ struct mode_clock_status
   volatile int hour;
   volatile int min;
 
-  volatile bool changing;
-  /* const */union led_data normal_led_data;  // not modify after initialized.
-  /* const */union led_data changing_led_data[2];  // not modify after initialized.
+  bool changing;
 
   pthread_t background_worker;
-  volatile bool terminated;  // flag for terminating background worker.
+  bool terminated;  // flag for terminating background worker.
 
-  volatile bool invalidated;
+  bool invalidated;
 };
 
 static void *background_worker_main (void *arg);
@@ -51,13 +56,6 @@ struct mode_clock_status *mode_clock_construct (int output_pipe_fd)
     time_info = localtime (&cur_time);
     status->saved_hour = status->hour = time_info->tm_hour;
     status->saved_min = status->min = time_info->tm_min;
-
-    status->normal_led_data.val = 0;
-    status->normal_led_data.bit_fields.e1 = 1;
-    status->changing_led_data[0].val = 0;
-    status->changing_led_data[0].bit_fields.e1 = status->changing_led_data[0].bit_fields.e3 = 1;
-    status->changing_led_data[1].val = 0;
-    status->changing_led_data[1].bit_fields.e1 = status->changing_led_data[1].bit_fields.e4 = 1;
 
     status->changing = false;
     status->terminated = false;
@@ -135,7 +133,7 @@ static void *background_worker_main (void *arg)
       if (cur_time >= prev_blink_time + LED_BLINK_DELAY && atomic_load_bool (&status->changing))
         {
           LOG (LOGGING_LEVEL_DEBUG, "[Main Process - Background Worker] blink!");
-          output_message_led_send (status->output_pipe_fd, status->changing_led_data[led_idx]);
+          output_message_led_send (status->output_pipe_fd, changing_led_data[led_idx]);
           led_idx = (led_idx + 1) % 2;
           prev_blink_time = cur_time;
         }
@@ -144,8 +142,7 @@ static void *background_worker_main (void *arg)
         {
           if (!atomic_load_bool (&status->changing))
             {
-              // No data race problem because status->normal_led_data is not modified after initialized.
-              output_message_led_send (status->output_pipe_fd, status->normal_led_data);
+              output_message_led_send (status->output_pipe_fd, normal_led_data);
             }
           // Orginially, there is a tiny multi-thread bug about status->hour and status->min.
           // But, it is very rare and not critical. So it can be forgived.

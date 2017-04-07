@@ -14,26 +14,21 @@
 #define BACKGROUND_WORKER_DELAY (10*1000)  // background worker delay (microseconds)
 #define CURSOR_BLINK_DELAY (1000*1000*1000)  // nanoseconds.
 
-static struct dot_matrix_data empty_dot_data;
-
-/*
- * TODO: Considering Thread-Safe.
- */
+static const struct dot_matrix_data empty_dot_data = { .data = { { 0, } } };
 
 struct mode_draw_board_status
 {
   int output_pipe_fd;
+  pthread_mutex_t mutex;
 
-  volatile bool cur_show;
+  bool cur_show;
   int cur_pos_x, cur_pos_y;
   char cur_val;
-  struct dot_matrix_data dot_data;  // Thread-Unsafe. TODO: It must be syncronized.
-  volatile int input_count;
+  struct dot_matrix_data dot_data;
+  int input_count;
   
   pthread_t background_worker;
-  volatile bool terminated;  // flag for terminating background worker.
-
-  volatile bool invalidated;
+  bool terminated;  // flag for terminating background worker.
 };
 
 static void *background_worker_main (void *arg);
@@ -44,6 +39,7 @@ struct mode_draw_board_status *mode_draw_board_construct (int output_pipe_fd)
   status = malloc (sizeof (*status));
 
   status->output_pipe_fd = output_pipe_fd;
+  pthread_mutex_init (&status->mutex, NULL);
   status->cur_show = true;
   status->cur_pos_x = status->cur_pos_y = 0;
   status->cur_val = 0;
@@ -51,7 +47,6 @@ struct mode_draw_board_status *mode_draw_board_construct (int output_pipe_fd)
   status->input_count = 0;
   status->terminated = false;
   
-  status->invalidated = true;
   pthread_create (&status->background_worker, NULL, &background_worker_main, status);
 
   return status;
@@ -61,19 +56,24 @@ void mode_draw_board_destroy (struct mode_draw_board_status *status)
 {
   atomic_store_bool (&status->terminated, true);
   pthread_join (status->background_worker, NULL);
+  pthread_mutex_destroy (&status->mutex);
   free (status);
 }
 
 int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_data data)
 {
+  pthread_mutex_lock (&status->mutex);
+  
   int next_x = status->cur_pos_x;
   int next_y = status->cur_pos_y;
+  bool invalidated = false;
 
   if (data.bit_fields.s1)
     {
-      atomic_store_bool (&status->cur_show, true);
+      status->cur_show = true;
       next_x = next_y = 0;
       status->dot_data = empty_dot_data;
+      invalidated = true;
     }
 
   if (data.bit_fields.s2)
@@ -83,8 +83,8 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
 
   if (data.bit_fields.s3)
     {
-      // TODO: problem. Need "atomic not".
-      atomic_store_bool (&status->cur_show, atomic_load_bool (&status->cur_show));
+      status->cur_show = !status->cur_show;
+      invalidated = true;
     }
 
   if (data.bit_fields.s4)
@@ -95,6 +95,7 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
   if (data.bit_fields.s5)
     {
       status->cur_val = (status->cur_val + 1) % 2;
+      invalidated = true;
     }
 
   if (data.bit_fields.s6)
@@ -105,6 +106,7 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
   if (data.bit_fields.s7)
     {
       status->dot_data = empty_dot_data;
+      invalidated = true;
     }
 
   if (data.bit_fields.s8)
@@ -123,9 +125,11 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
               status->dot_data.data[i][j] = (status->dot_data.data[i][j] + 1) % 2;
             }
         }
+      status->cur_val = (status->cur_val + 1) % 2;
+      invalidated = true;
     }
 
-  /* When cursor position is changed. */
+  /* When cursor position is changed and the moved cursor is valid. */
   if (0 <= next_x && next_x < DOT_MATRIX_WIDTH &&
       0 <= next_y && next_y < DOT_MATRIX_HEIGHT &&
       (next_x != status->cur_pos_x || next_y != status->cur_pos_y))
@@ -134,16 +138,25 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
       status->cur_pos_x = next_x;
       status->cur_pos_y = next_y;
       status->cur_val = status->dot_data.data[status->cur_pos_y][status->cur_pos_x];
+      invalidated = true;
     }
 
-  status->input_count = (status->input_count + 1) % 10000;
+  /* Increment input_count */
+  status->input_count = (status->input_count + 1) % FND_NUMBER_UPPER_BOUND;
 
-  status->invalidated = true;
+  if (invalidated)
+    {
+      if (!status->cur_show)
+        status->dot_data.data[status->cur_pos_y][status->cur_pos_x] = status->cur_val;
+      output_message_dot_matrix_send (status->output_pipe_fd, &status->dot_data);
+    }
+  output_message_fnd_send (status->output_pipe_fd, status->input_count);
+
+  pthread_mutex_unlock (&status->mutex);
 
   return 0;
 }
 
-// TODO: need to be refactored.
 static void *background_worker_main (void *arg)
 {
   struct mode_draw_board_status *status = arg;
@@ -153,7 +166,9 @@ static void *background_worker_main (void *arg)
     {
       long long cur_time = get_nano_time ();
 
-      if (cur_time >= prev_blink_time + CURSOR_BLINK_DELAY && atomic_load_bool (&status->cur_show))
+      pthread_mutex_lock (&status->mutex);
+
+      if (cur_time >= prev_blink_time + CURSOR_BLINK_DELAY && status->cur_show)
         {
           LOG (LOGGING_LEVEL_DEBUG, "[Main Process - Background Worker] blink!");
 
@@ -165,15 +180,7 @@ static void *background_worker_main (void *arg)
           prev_blink_time = cur_time;
         }
 
-      if (atomic_exchange_bool (&status->invalidated, false))
-        {
-          if (!atomic_load_bool (&status->cur_show))
-            {
-              status->dot_data.data[status->cur_pos_y][status->cur_pos_x] = status->cur_val;
-              output_message_dot_matrix_send (status->output_pipe_fd, &status->dot_data);
-            }
-          output_message_fnd_send (status->output_pipe_fd, status->input_count);
-        }
+      pthread_mutex_unlock (&status->mutex);
 
       usleep (BACKGROUND_WORKER_DELAY);
     }

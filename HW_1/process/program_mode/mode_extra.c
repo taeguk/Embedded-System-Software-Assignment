@@ -23,7 +23,7 @@ struct mode_extra_status
   long long rest_time[SWITCH_BUTTON_NUM + 1];
   int score; 
   pthread_t background_worker;
-  volatile bool terminated;  // flag for terminating background worker.
+  bool terminated;  // flag for terminating background worker.
 };
 
 static void *background_worker_main (void *arg);

@@ -24,6 +24,8 @@ struct output_message_header
   output_message_size_t body_size;
 };
 
+#define FND_NUMBER_UPPER_BOUND 10000
+
 typedef uint16_t fnd_data_t;
 
 union led_data

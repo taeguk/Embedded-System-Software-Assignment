@@ -25,6 +25,8 @@ struct mode_text_editor_status
   int alphabet_idx;
 };
 
+typedef void (*handler_character) (struct mode_text_editor_status *status, int switch_no);
+
 static struct dot_matrix_data dot_matrix_data[_TYPING_MODE_COUNT] =
   {
     {
@@ -74,31 +76,13 @@ static const char switch_to_alphabet [SWITCH_BUTTON_NUM + 1][ALPHABETS_PER_SWITC
     [9] = { 'W', 'X', 'Y' }
   };
 
-inline static void update_text_lcd (const struct mode_text_editor_status *status)
-{
-  if (status->lcd_data->len <= 0)
-    {
-      status->lcd_data->len = MAX_LCD_STRING_LEN;
-      for (int i = 0; i < MAX_LCD_STRING_LEN; ++i)
-        status->lcd_data->str[i] = ' ';
-      status->lcd_data->str[MAX_LCD_STRING_LEN] = '\0';
-      
-      output_message_text_lcd_send (status->output_pipe_fd, status->lcd_data);
-
-      status->lcd_data->len = 0;
-      status->lcd_data->str[0] = '\0';
-    }
-  else
-    {
-      LOG (LOGGING_LEVEL_NORMAL, "[Output Process] update text lcd : %s\n", status->lcd_data->str);
-      output_message_text_lcd_send (status->output_pipe_fd, status->lcd_data);
-    }
-}
-
-inline static void update_dot_matrix (const struct mode_text_editor_status *status)
-{
-  output_message_dot_matrix_send (status->output_pipe_fd, &dot_matrix_data[status->typing_mode]);
-}
+static void process_key_combination (struct mode_text_editor_status *status, union switch_data *data);
+static void process_character_input (struct mode_text_editor_status *status, union switch_data data);
+static void handle_alphabet (struct mode_text_editor_status *status, int switch_no);
+static void handle_number (struct mode_text_editor_status *status, int switch_no);
+static void add_character (struct mode_text_editor_status *status, char ch);
+static void update_text_lcd (const struct mode_text_editor_status *status);
+static void update_dot_matrix (const struct mode_text_editor_status *status);
 
 struct mode_text_editor_status *mode_text_editor_construct (int output_pipe_fd)
 {
@@ -123,6 +107,46 @@ void mode_text_editor_destroy (struct mode_text_editor_status *status)
 {
   free (status->lcd_data);
   free (status);
+}
+
+int mode_text_editor_switch (struct mode_text_editor_status *status, union switch_data data)
+{
+  process_key_combination (status, &data);
+  process_character_input (status, data);
+
+  update_text_lcd (status);
+  update_dot_matrix (status);
+
+  status->input_count = (status->input_count + 1) % FND_NUMBER_UPPER_BOUND;
+  output_message_fnd_send (status->output_pipe_fd, status->input_count);
+
+  return 0;
+}
+
+static void update_text_lcd (const struct mode_text_editor_status *status)
+{
+  if (status->lcd_data->len <= 0)
+    {
+      status->lcd_data->len = MAX_LCD_STRING_LEN;
+      for (int i = 0; i < MAX_LCD_STRING_LEN; ++i)
+        status->lcd_data->str[i] = ' ';
+      status->lcd_data->str[MAX_LCD_STRING_LEN] = '\0';
+      
+      output_message_text_lcd_send (status->output_pipe_fd, status->lcd_data);
+
+      status->lcd_data->len = 0;
+      status->lcd_data->str[0] = '\0';
+    }
+  else
+    {
+      LOG (LOGGING_LEVEL_NORMAL, "[Output Process] update text lcd : %s\n", status->lcd_data->str);
+      output_message_text_lcd_send (status->output_pipe_fd, status->lcd_data);
+    }
+}
+
+inline static void update_dot_matrix (const struct mode_text_editor_status *status)
+{
+  output_message_dot_matrix_send (status->output_pipe_fd, &dot_matrix_data[status->typing_mode]);
 }
 
 static void add_character (struct mode_text_editor_status *status, char ch)
@@ -151,23 +175,24 @@ static void process_key_combination (struct mode_text_editor_status *status, uni
     {
       status->lcd_data->len = 0;
       status->lcd_data->str[0] = '\0';
+      status->prev_switch_no = -1;
       data->bit_fields.s2 = data->bit_fields.s3 = 0;
     }
 
   if (data->bit_fields.s5 && data->bit_fields.s6)
     {
       status->typing_mode = (status->typing_mode + 1) % _TYPING_MODE_COUNT;
+      status->prev_switch_no = -1;
       data->bit_fields.s5 = data->bit_fields.s6 = 0;
     }
 
   if (data->bit_fields.s8 && data->bit_fields.s9)
     {
       add_character (status, ' ');
+      status->prev_switch_no = -1;
       data->bit_fields.s8 = data->bit_fields.s9 = 0;
     }
 }
-
-typedef void (*handler_character) (struct mode_text_editor_status *status, int switch_no);
 
 static void handle_alphabet (struct mode_text_editor_status *status, int switch_no)
 {
@@ -215,16 +240,4 @@ static void process_character_input (struct mode_text_editor_status *status, uni
 #undef HANDLE_SWITCH_DATA
 }
 
-int mode_text_editor_switch (struct mode_text_editor_status *status, union switch_data data)
-{
-  process_key_combination (status, &data);
-  process_character_input (status, data);
 
-  update_text_lcd (status);
-  update_dot_matrix (status);
-
-  status->input_count = (status->input_count + 1) % 10000;
-  output_message_fnd_send (status->output_pipe_fd, status->input_count);
-
-  return 0;
-}
