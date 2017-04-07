@@ -20,6 +20,7 @@ struct mode_text_editor_status
   int output_pipe_fd;
   enum typing_mode typing_mode;
   struct text_lcd_data *lcd_data;
+  int input_count;
   int prev_switch_no;
   int alphabet_idx;
 };
@@ -109,6 +110,7 @@ struct mode_text_editor_status *mode_text_editor_construct (int output_pipe_fd)
   status->lcd_data = malloc (sizeof (*status->lcd_data) + (MAX_LCD_STRING_LEN + 1) * sizeof (char));
   status->lcd_data->len = 0;
   status->lcd_data->str[0] = '\0';
+  status->input_count = 0;
   status->typing_mode = TYPING_MODE_ALPHABET;
 
   update_text_lcd (status);
@@ -220,6 +222,9 @@ int mode_text_editor_switch (struct mode_text_editor_status *status, union switc
 
   update_text_lcd (status);
   update_dot_matrix (status);
+
+  status->input_count = (status->input_count + 1) % 10000;
+  output_message_fnd_send (status->output_pipe_fd, status->input_count);
 
   return 0;
 }

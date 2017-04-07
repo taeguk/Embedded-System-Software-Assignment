@@ -17,7 +17,7 @@
 static struct dot_matrix_data empty_dot_data;
 
 /*
- * TODO: Thread-Safe.
+ * TODO: Considering Thread-Safe.
  */
 
 struct mode_draw_board_status
@@ -28,6 +28,7 @@ struct mode_draw_board_status
   int cur_pos_x, cur_pos_y;
   char cur_val;
   struct dot_matrix_data dot_data;  // Thread-Unsafe. TODO: It must be syncronized.
+  volatile int input_count;
   
   pthread_t background_worker;
   volatile bool terminated;  // flag for terminating background worker.
@@ -47,6 +48,7 @@ struct mode_draw_board_status *mode_draw_board_construct (int output_pipe_fd)
   status->cur_pos_x = status->cur_pos_y = 0;
   status->cur_val = 0;
   status->dot_data = empty_dot_data;
+  status->input_count = 0;
   status->terminated = false;
   
   status->invalidated = true;
@@ -134,6 +136,8 @@ int mode_draw_board_switch (struct mode_draw_board_status *status, union switch_
       status->cur_val = status->dot_data.data[status->cur_pos_y][status->cur_pos_x];
     }
 
+  status->input_count = (status->input_count + 1) % 10000;
+
   status->invalidated = true;
 
   return 0;
@@ -168,6 +172,7 @@ static void *background_worker_main (void *arg)
               status->dot_data.data[status->cur_pos_y][status->cur_pos_x] = status->cur_val;
               output_message_dot_matrix_send (status->output_pipe_fd, &status->dot_data);
             }
+          output_message_fnd_send (status->output_pipe_fd, status->input_count);
         }
 
       usleep (BACKGROUND_WORKER_DELAY);
