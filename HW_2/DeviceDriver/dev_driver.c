@@ -111,8 +111,6 @@ long my_dev_ioctl(struct file *f, unsigned int ioctl_num, unsigned long ioctl_pa
       printk(KERN_INFO"Invalid ioctl_num: %u.\n", ioctl_num);
       return -EINVAL;
     }
-
-  return 0;
 }
 
 int __init my_module_init(void)
@@ -169,6 +167,7 @@ static void do_action(struct my_timer_data *p_data)
       outw(val, (unsigned int) iom_fpga_dot_addr + i * 2);
     }
 
+  // write to lcd text.
   for (i = 0; i < 2; ++i)
     {
       for (j = 0; j < LCD_LINE_MAX_LEN; ++j)
@@ -196,6 +195,7 @@ static void do_action(struct my_timer_data *p_data)
       outw(value, (unsigned int)iom_fpga_text_lcd_addr+i);
     }
 
+  // update data for next timer.
   if (++p_data->val > 8)
     {
       p_data->val = 1;

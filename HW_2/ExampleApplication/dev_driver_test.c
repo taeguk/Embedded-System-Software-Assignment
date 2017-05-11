@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 
   if(argc != 5) 
     {
-      printf("Invalid Value Arguments! %s <interval (1 ~ 100)> <count (1 ~ 100)> <start option (0001 ~ 8000)> <run option (0 : write, otherwise : ioctl>\n", argv[0]);
+      printf("Invalid Value Arguments! %s <interval (1 ~ 100)> <count (1 ~ 100)> <start option (0001 ~ 8000)> <run option (0 : write, otherwise : ioctl)>\n", argv[0]);
       return -1;
     }
 
