@@ -1,7 +1,3 @@
-/* FPGA Text LCD Test Application
-File : fpga_test_text_lcd.c
-Auth : largest@huins.com */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

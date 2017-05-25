@@ -96,19 +96,19 @@ int my_dev_release(struct inode *minode, struct file *mfile)
 // when write to device, call this function
 ssize_t my_dev_write(struct file *inode, const char *gdata, size_t length, loff_t *off_what)
 {
-  printk(KERN_INFO"In device driver, write handler called.\n");
+  printk(KERN_NOTICE"In device driver, write handler called.\n");
   return run_timer(gdata);
 }
 
 long my_dev_ioctl(struct file *f, unsigned int ioctl_num, unsigned long ioctl_param)
 {
-  printk(KERN_INFO"In device driver, ioctl handler called.\n");
+  printk(KERN_NOTICE"In device driver, ioctl handler called.\n");
   switch (ioctl_num)
     {
     case 0 :
       return run_timer((char *)(ioctl_param));
     default:
-      printk(KERN_INFO"Invalid ioctl_num: %u.\n", ioctl_num);
+      printk(KERN_WARNING"Invalid ioctl_num: %u.\n", ioctl_num);
       return -EINVAL;
     }
 }
@@ -129,7 +129,7 @@ int __init my_module_init(void)
   iom_fpga_dot_addr = ioremap(IOM_FPGA_DOT_ADDRESS, 0x10);
   iom_fpga_text_lcd_addr = ioremap(IOM_FPGA_TEXT_LCD_ADDRESS, 0x32);
 
-  printk(KERN_NOTICE"init module, %s major number : %d\n", MY_DEVICE_NAME, my_dev_major_no);
+  printk(KERN_ALERT"init module, %s major number : %d\n", MY_DEVICE_NAME, my_dev_major_no);
 
   return 0;
 }
@@ -210,11 +210,11 @@ static void timer_callback(unsigned long arg)
 
   if (--p_data->count == 0)
     {
-      printk(KERN_INFO"Timer callback terminated gracefully.\n");
+      printk(KERN_NOTICE"Timer callback terminated gracefully.\n");
       timer_set = 0;
       return;
     }
-  printk(KERN_INFO"Timer callback is called. (pos = %d, val = %d, count = %d, interval = %d)\n", 
+  printk(KERN_NOTICE"Timer callback is called. (pos = %d, val = %d, count = %d, interval = %d)\n",
          p_data->pos, p_data->val, p_data->count, p_data->interval);
 
   do_action (p_data);
@@ -240,7 +240,7 @@ static ssize_t run_timer(const char *data)
   if (copy_from_user(&my_timer_data, data, data_len))
     return -EFAULT;
 
-  printk(KERN_INFO"New timer is set. (pos = %d, val = %d, count = %d, interval = %d\n", 
+  printk(KERN_NOTICE"New timer is set. (pos = %d, val = %d, count = %d, interval = %d\n",
          my_timer_data.pos, my_timer_data.val, my_timer_data.count, my_timer_data.interval);
 
   my_timer_data.timer.expires = get_jiffies_64() + (my_timer_data.interval * HZ / 10);
