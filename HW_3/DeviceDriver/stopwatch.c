@@ -42,7 +42,7 @@ static struct file_operations stopwatch_fops =
 static unsigned char *iom_fpga_fnd_addr;
 
 static int stopwatch_usage = 0;
-static int stopwatch_major = 0, stopwatch_minor = 0;
+static int stopwatch_major = 242, stopwatch_minor = 0;
 static dev_t stopwatch_dev;
 static struct cdev stopwatch_cdev;
 
@@ -62,7 +62,7 @@ static void clear_stopwatch(void)
 {
   if (timer_set)
     {
-      del_timer_sync (&timer);
+      del_timer (&timer);
       timer_set = 0;
     }
   stopwatch_seconds = 0;
@@ -110,7 +110,7 @@ static irqreturn_t interrupt_back_handler(int irq, void* dev_id)
 
   if (timer_set)
     {
-      del_timer_sync (&timer);
+      del_timer (&timer);
       timer_set = 0;
     }
 
